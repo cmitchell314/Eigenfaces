@@ -1,4 +1,5 @@
 import math
+import random
 from matplotlib import pyplot as plt 
 import numpy as np
 import os 
@@ -28,7 +29,7 @@ def get_data():
 
     return e_faces, mean_face, test_faces
 
-def get_closest_face(img, e_faces, mean_face, pop_faces):
+def get_closest_face(img, e_faces, mean_face, pop_faces, user_owner):    
     if img.shape[0] != 192 or img.shape[1] != 168:
         return None
     
@@ -43,40 +44,71 @@ def get_closest_face(img, e_faces, mean_face, pop_faces):
     # print(faces)
     # print([eucl_dst[i] for i in faces])
     u_fac = np.matmul(e_faces, pop_faces[faces[0]]) + mean_face
-    return faces[0], np.sum(pop_faces[faces[0]]), u_fac, eucl_dst[faces[0]]
+    return user_owner[faces[0]], np.sum(pop_faces[faces[0]]), u_fac, eucl_dst[faces[0]]
 
 e_faces, mean_face, test_faces = get_data()
 
+user_owner = {}
 pop_faces = []
-for u in test_faces:
+j = 0
+for i, u in enumerate(test_faces):
     for img in u:
-        pop_faces.append(np.matmul(e_faces.T, img.flatten() - mean_face))
+        pop_faces.append(img)
+        user_owner[j] = i
+        j += 1 
 
 print(len(pop_faces))
 
-total_faces = 0
-total_correct = 0
-for num, u in enumerate(test_faces):
-    user_faces = 0
-    user_correct = 0
-    for img in u:
-        # print(img.shape)
-        _, pix_sum, _, _ = get_closest_face(img, e_faces, mean_face, pop_faces)
-        # print(closest_face.shape)
-        if pix_sum is not None:
-            user_faces += 1
-            if pix_sum == np.sum(np.matmul(e_faces.T, img.flatten() - mean_face)):
-                user_correct += 1
-            # print('Closest face:', closest_face[0], 'Distance:', closest_face[3])
-            # plt.imshow(closest_face[1].reshape(192, 168), cmap='gray')
-            # plt.show()
-            # plt.imshow(closest_face[2].reshape(192, 168), cmap='gray')
-            # plt.show()
-    print(num)
-    print(user_faces)
-    print(float(user_correct)/user_faces)
-    print('User', num, ' Total User Faces:', user_faces, ' Accuracy:', float(user_correct)/user_faces)
-    total_faces += user_faces
-    total_correct += user_correct
+tr_fac = []
+tes_fac = []
+for i in range(0, len(pop_faces)):
+    if random.random() < 0.5:
+        tr_fac.append(i)
+    else:
+        tes_fac.append(i)
 
+tr_pop_face = [np.matmul(e_faces.T, pop_faces[i].flatten() - mean_face) for i in tr_fac]
+
+user_faces = [0, 0, 0]
+user_correct = [0, 0, 0]
+
+for i in tes_fac:
+    exp_owner, _, _, _ = get_closest_face(pop_faces[i], e_faces, mean_face, tr_pop_face, user_owner)
+    if exp_owner is not None:
+        user_faces[user_owner[i]] += 1
+        print(exp_owner, ', ', user_owner[i])
+        if exp_owner == user_owner[i]:
+            user_correct[user_owner[i]] += 1
+
+print(len(tr_fac))
+print(user_faces)
+print(user_correct)
+
+
+# total_faces = 0
+# total_correct = 0
+# for num, u in enumerate(test_faces):
+#     user_faces = 0
+#     user_correct = 0
+#     for img in u:
+#         # print(img.shape)
+#         _, pix_sum, _, _ = get_closest_face(img, e_faces, mean_face, pop_faces, user_owner)
+#         # print(closest_face.shape)
+#         if pix_sum is not None:
+#             user_faces += 1
+#             if pix_sum == np.sum(np.matmul(e_faces.T, img.flatten() - mean_face)):
+#                 user_correct += 1
+#             # print('Closest face:', closest_face[0], 'Distance:', closest_face[3])
+#             # plt.imshow(closest_face[1].reshape(192, 168), cmap='gray')
+#             # plt.show()
+#             # plt.imshow(closest_face[2].reshape(192, 168), cmap='gray')
+#             # plt.show()
+#     print(num)
+#     print(user_faces)
+#     print(float(user_correct)/user_faces)
+#     print('User', num, ' Total User Faces:', user_faces, ' Accuracy:', float(user_correct)/user_faces)
+#     total_faces += user_faces
+#     total_correct += user_correct
+total_faces = sum(user_faces)
+total_correct = sum(user_correct)
 print('Total Faces:', total_faces, ' Total Correct:', total_correct, ' Accuracy:', float(total_correct)/total_faces)
